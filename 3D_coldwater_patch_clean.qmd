@@ -134,5 +134,5 @@ mean_summary_extra <- mean_summary_long %>%
 new_df <- bind_cols(template, mean_summary_extra)
 
 # Save as .csv
-write.csv(new_df, here("Data","Thermocouple","Average_clean","3D_20260311_run.csv"), row.names = FALSE)
+#write.csv(new_df, here("Data","Thermocouple","Average_clean","3D_20260311_run.csv"), row.names = FALSE)
 ```
