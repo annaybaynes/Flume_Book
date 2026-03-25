@@ -1,0 +1,401 @@
+---
+Script name: Loggers.qmd
+Author: A. Y. Baynes
+Contact: abaynes@umass.edu
+
+Objective: Show how coldwater patch temperature change over time
+Data source: FLume project
+Output: 
+- Figure of logger temperature over time
+
+Table of contents:
+ 0. Load libraries and data
+ 1. 20260204 Logger
+ 2. 20260205 Logger
+ 3. 20260210 Logger
+---
+
+# Logger {.unnumbered}
+
+## 0. Load Libraries and data
+
+```{r setup, include=FALSE}
+rm(list = ls())
+
+library(sf)
+library(ggplot2)
+require(ggspatial)
+library(tidyr)
+library(dplyr)
+library(purrr)
+library(grid) #to add arrow in plot
+library(here)
+here()
+```
+
+## 1. 20260204 Logger
+
+### Load Data
+
+```{r}
+L000 <- read.csv(here("Data","Logger_20260204","AMTH_03_21858939 2026-02-04 16_43_22 EST.csv"))
+L050 <- read.csv(here("Data","Logger_20260204","HARR_08_21858943 2026-02-04 16_43_15 EST.csv"))
+L100 <- read.csv(here("Data","Logger_20260204","DCKY_04 2026-02-04 16_42_42 EST.csv"))
+L150 <- read.csv(here("Data","Logger_20260204","DRYU_08_1m_21858945 2026-02-04 16_43_08 EST.csv"))
+L200 <- read.csv(here("Data","Logger_20260204","DRYU17_145m21858942 2026-02-04 16_43_02 EST.csv"))
+
+Ln050 <- read.csv(here("Data","Logger_20260204","DCKY_04_1B_21858950 2026-02-04 16_42_50 EST.csv"))
+Ln200 <- read.csv(here("Data","Logger_20260204","DRYU_19_15A_21858923 2026-02-04 16_42_55 EST.csv"))
+
+str(L000)
+```
+
+### Clean Data
+
+```{r}
+logger_list <- list(
+  L000 = L000, 
+  L050 = L050, 
+  L100 = L100, 
+  L150 = L150, 
+  L200 = L200, 
+  Ln050 = Ln050, 
+  Ln200 = Ln200)
+
+# Convert cutoff to POSIXct
+cutoff <- as.POSIXct("02/04/2026 16:20:00", format = "%m/%d/%Y %H:%M:%S", tz = "EST")
+
+for (nm in names(logger_list)) {
+  df <- logger_list[[nm]]
+
+  df <- df %>%
+    rename(
+      Date_Time = Date.Time..EST.,
+      Temp_C    = Temperature.....C.
+    ) %>%
+    mutate(
+      Date_Time = as.POSIXct(Date_Time, format = "%m/%d/%Y %H:%M:%S", tz = "EST")
+    ) %>%
+    select(
+      Date_Time, Temp_C
+    ) %>%
+    filter(Date_Time <= cutoff)
+
+  assign(nm, df, envir = .GlobalEnv)
+}
+
+```
+
+\*\* Coldwater patch data summary
+
+```{r}
+cutoff_1315 <- as.POSIXct("02/04/2026 13:15:00", format = "%m/%d/%Y %H:%M:%S", tz = "EST")
+
+L000_seep <- L000 %>%
+  filter(Date_Time >= cutoff_1315)
+
+summary(L000_seep)
+```
+
+### Plot
+
+```{r}
+logger_list2 <- list(
+  L000 = L000, 
+  L050 = L050, 
+  L100 = L100, 
+  L150 = L150, 
+  L200 = L200, 
+  Ln050 = Ln050, 
+  Ln200 = Ln200)
+
+logger_all <- bind_rows(
+  logger_list2,
+  .id = "Logger"
+)
+
+logger_labels <- c(
+  L000    = "Logger 0 cm",
+  L050   = "Logger 50 cm",
+  L100  = "Logger 100 cm",
+  L150  = "Logger 150 cm",
+  L200  = "Logger 200 cm",
+  Ln050  = "Logger -50 cm",
+  Ln200 = "Logger -200 cm"
+)
+
+seep_on <- as.POSIXct("02/04/2026 13:00:00", format = "%m/%d/%Y %H:%M:%S", tz = "EST")
+
+plot1 <- ggplot(logger_all, aes(Date_Time, Temp_C)) +
+  geom_line() +
+  geom_vline(xintercept = seep_on, linetype = "dashed", color = "red", linewidth = 0.8) +
+  facet_wrap(~ Logger, labeller = labeller(Logger = logger_labels)) +
+  theme_bw() +
+  labs(x = "Date Time", y = "Temperature (°C)")
+plot1
+
+out_path = here("Figures")
+ggsave("loggers_run_20260204.png",
+       plot = plot1,
+       path = out_path,
+       width = 7,
+       height = 4,
+       dpi = 300)
+```
+
+## 2. 20260205 Logger
+
+### Load Data
+
+```{r}
+L20x00 <- read.csv(here("Data","Logger_20260205","DRYU_08_1m_21858945 2026-02-09 13_57_56 EST.csv"))
+L40x00 <- read.csv(here("Data","Logger_20260205","AMTH_03_21858939 2026-02-09 13_58_29 EST.csv"))
+L20x20 <- read.csv(here("Data","Logger_20260205","DCKY_04 2026-02-09 13_58_18 EST.csv"))
+L40x20 <- read.csv(here("Data","Logger_20260205","HARR_08_21858943 2026-02-09 13_58_07 EST.csv"))
+L58x20 <- read.csv(here("Data","Logger_20260205","DRYU17_145m21858942 2026-02-09 13_58_24 EST.csv"))
+L58x40 <- read.csv(here("Data","Logger_20260205","DRYU_19_15A_21858923 2026-02-09 13_58_13 EST.csv"))
+
+L20xn50 <- read.csv(here("Data","Logger_20260205","DCKY_04_1B_21858950 2026-02-09 13_58_02 EST.csv"))
+
+str(L20x00)
+```
+
+### Clean Data
+
+```{r}
+logger_list <- list(
+  L20x00 = L20x00, 
+  L40x00 = L40x00, 
+  L20x20 = L20x20, 
+  L40x20 = L40x20, 
+  L58x20 = L58x20,
+  L58x40 = L58x40,
+  L20xn50 = L20xn50)
+
+# Remove data when chiller shut down (Turned off seep at 2:00 Feb 5 but looks like chiller shut down before then)
+cutoff <- as.POSIXct("02/05/2026 13:00:00", format = "%m/%d/%Y %H:%M:%S", tz = "EST")
+
+for (nm in names(logger_list)) {
+  df <- logger_list[[nm]]
+
+  df <- df %>%
+    rename(
+      Date_Time = Date.Time..EST.,
+      Temp_C    = Temperature.....C.
+    ) %>%
+    mutate(
+      Date_Time = as.POSIXct(Date_Time, format = "%m/%d/%Y %H:%M:%S", tz = "EST")
+    ) %>%
+    select(
+      Date_Time, Temp_C
+    ) %>%
+    filter(Date_Time <= cutoff)
+
+  assign(nm, df, envir = .GlobalEnv)
+}
+
+```
+
+\*\* Coldwater patch data summary
+
+```{r}
+#cutoff_1315 <- as.POSIXct("02/04/2026 13:15:00", format = "%m/%d/%Y %H:%M:%S", tz = "EST")
+
+#L00x20_seep <- L00x20 %>%
+#  filter(Date_Time >= cutoff_1315)
+
+summary(L20x00)
+```
+
+### Plot
+
+```{r}
+logger_list2 <- list(
+  L20x00 = L20x00, 
+  L40x00 = L40x00, 
+  L20x20 = L20x20, 
+  L40x20 = L40x20, 
+  L58x20 = L58x20,
+  L58x40 = L58x40,
+  L20xn50 = L20xn50)
+
+logger_all <- bind_rows(
+  logger_list2,
+  .id = "Logger"
+)
+
+logger_labels <- c(
+  L20x00 = "Logger 20x00 cm",
+  L40x00 = "Logger 40x00 cm",
+  L20x20 = "Logger 20x20 cm",
+  L40x20 = "Logger 40x20 cm",
+  L58x20 = "Logger 58x20 cm",
+  L58x40 = "Logger 58x40 cm",
+  L20xn50 = "Logger -50 cm"
+)
+
+library(dplyr)
+library(tibble)
+
+logger_positions <- tibble(
+  Logger = c(
+    "L20x00", "L40x00",
+    "L20x20", "L40x20", "L58x20",
+    "L58x40",
+    "L20xn50"
+  ),
+  x_cm = c(20, 40, 20, 40, 58, 58, 20),
+  y_cm = c(0, 0, 20, 20, 20, 40, -50)
+)
+
+logger_all <- logger_all %>%
+  left_join(logger_positions, by = "Logger")
+
+
+logger_all <- logger_all %>%
+  mutate(
+    x_cm = factor(x_cm, levels = c(20, 40, 58)),
+    y_cm = factor(y_cm, levels = c(-50, 0, 20, 40))
+  )
+
+
+plot1 <- ggplot(logger_all, aes(Date_Time, Temp_C)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(y_cm),
+    cols = vars(x_cm),
+    drop = FALSE,
+    labeller = labeller(
+      x_cm = function(x) paste0(x, " cm"),
+      y_cm = function(y) paste0(y, " cm")
+    )
+  ) +
+  theme_bw() +
+  labs(
+    x = "Date Time",
+    y = "Temperature (°C)"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.background = element_rect(fill = "grey95")
+  )
+plot1
+
+out_path = here("Figures")
+ggsave("loggers_run_20260205.png",
+       plot = plot1,
+       path = out_path,
+       width = 7,
+       height = 4,
+       dpi = 300)
+```
+
+## 3. 20260210 Logger
+
+### Load Data
+
+```{r}
+L000 <- read.csv(here("Data","Logger_20260210","DRYU_08_1m_21858945 2026-02-10 13_35_46 EST.csv"))
+L020 <- read.csv(here("Data","Logger_20260210","HARR_08_21858943 2026-02-10 13_35_35 EST.csv"))
+L040 <- read.csv(here("Data","Logger_20260210","DRYU17_145m21858942 2026-02-10 13_36_02 EST.csv"))
+L060 <- read.csv(here("Data","Logger_20260210","DRYU_19_15A_21858923 2026-02-10 13_35_51 EST.csv"))
+L080 <- read.csv(here("Data","Logger_20260210","DCKY_04_1B_21858950 2026-02-10 13_35_56 EST.csv"))
+L100 <- read.csv(here("Data","Logger_20260210","DCKY_04 2026-02-10 13_35_40 EST.csv"))
+
+Ln050 <- read.csv(here("Data","Logger_20260210","AMTH_03_21858939 2026-02-10 13_35_30 EST.csv"))
+  
+str(L000)
+```
+
+### Clean Data
+
+```{r}
+logger_list <- list(
+  L000 = L000, 
+  L020 = L020, 
+  L040 = L040, 
+  L060 = L060, 
+  L080 = L080, 
+  L100 = L100, 
+  Ln050 = Ln050)
+
+# Convert cutoff to POSIXct
+cutoff <- as.POSIXct("02/10/2026 13:00:00", format = "%m/%d/%Y %H:%M:%S", tz = "EST")
+
+for (nm in names(logger_list)) {
+  df <- logger_list[[nm]]
+
+  df <- df %>%
+    rename(
+      Date_Time = Date.Time..EST.,
+      Temp_C    = Temperature.....C.
+    ) %>%
+    mutate(
+      Date_Time = as.POSIXct(Date_Time, format = "%m/%d/%Y %H:%M:%S", tz = "EST")
+    ) %>%
+    select(
+      Date_Time, Temp_C
+    ) %>%
+    filter(Date_Time <= cutoff)
+
+  assign(nm, df, envir = .GlobalEnv)
+}
+
+```
+
+\*\* Coldwater patch data summary
+
+```{r}
+#cutoff_1315 <- as.POSIXct("02/04/2026 13:15:00", format = "%m/%d/%Y %H:%M:%S", tz = "EST")
+
+#L000_seep <- L000 %>%
+#  filter(Date_Time >= cutoff_1315)
+
+summary(L000)
+```
+
+### Plot
+
+```{r}
+logger_list2 <- list(
+  L000 = L000, 
+  L020 = L020, 
+  L040 = L040, 
+  L060 = L060, 
+  L080 = L080, 
+  L100 = L100, 
+  Ln050 = Ln050)
+
+logger_all <- bind_rows(
+  logger_list2,
+  .id = "Logger"
+)
+
+logger_labels <- c(
+  L000    = "Logger 0 cm",
+  L020   = "Logger 20 cm",
+  L040  = "Logger 40 cm",
+  L060  = "Logger 60 cm",
+  L080  = "Logger 80 cm",
+  L100  = "Logger 100 cm",
+  Ln050 = "Logger -50 cm"
+)
+
+#seep_on <- as.POSIXct("02/04/2026 13:00:00", format = "%m/%d/%Y %H:%M:%S", tz = "EST")
+
+plot1 <- ggplot(logger_all, aes(Date_Time, Temp_C)) +
+  geom_line() +
+#  geom_vline(xintercept = seep_on, linetype = "dashed", color = "red", linewidth = 0.8) +
+  facet_wrap(~ Logger, labeller = labeller(Logger = logger_labels)) +
+  theme_bw() +
+  labs(x = "Date Time", y = "Temperature (°C)")
+plot1
+
+out_path = here("Figures")
+ggsave("loggers_run_barrier_20260210.png",
+       plot = plot1,
+       path = out_path,
+       width = 7,
+       height = 4,
+       dpi = 300)
+```

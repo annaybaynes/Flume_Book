@@ -1,0 +1,138 @@
+---
+Script name: 3D_coldwater_patch_clean.qmd
+Author: A. Y. Baynes
+Contact: abaynes@umass.edu
+
+Objective: Calculate means at each grid point and clean data for plotly
+Data source: Flume project
+Output: 
+- Temperature means at each grid point
+- Combined dataframe of temperature means and grid points to put into plotly
+
+Table of contents:
+ 0. Load libraries and data
+ 1. Data cleaning
+ 2. Calculate means
+ 3. Pivot longer
+ 4. Bind dataframes
+---
+
+# Clean coldwater patch data {.unnumbered}
+
+## 0. Load Libraries and data
+
+```{r setup, include=FALSE}
+rm(list = ls())
+
+library(lubridate)
+library(hms)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(plotly)
+library(here)
+here()
+```
+
+## 1. Data cleaning
+
+```{r}
+df <- read.csv(here("Data","Thermocouple","Average","3D_20260311.csv"))
+str(df)
+
+df <- df %>%
+  select(-c(Value.10,Unit.10, Value.11, Unit.11)) %>%
+  rename(
+    Value.1 = Value,
+    Unit.1 = Unit,
+    Value.2 = Value.1,
+    Unit.2 = Unit.1,
+    Value.3 = Value.2,
+    Unit.3 = Unit.2,
+    Value.4 = Value.3,
+    Unit.4 = Unit.3,
+    Value.5 = Value.4,
+    Unit.5 = Unit.4,
+    Value.6 = Value.5,
+    Unit.6 = Unit.5,
+    Value.7 = Value.6,
+    Unit.7 = Unit.6,
+    Value.8 = Value.7,
+    Unit.8 = Unit.7,
+    Value.9 = Value.8,
+    Unit.9 = Unit.8,
+    Value.10 = Value.9,
+    Unit.10 = Unit.9
+  )
+```
+
+## 2. Calculate means
+
+```{r}
+df_list <- df %>%
+  group_by(group = cumsum(Place == "Place")) %>%
+  filter(Place != "Place") %>%
+  mutate(
+    across(starts_with("Value."), as.numeric),
+    Date = mdy(Date),
+    Time = as_hms(Time)
+  ) %>%
+  group_modify(~ {
+    # Calculate the means for Value columns
+    mean_row <- .x %>%
+      summarise(
+        across(starts_with("Value."), ~mean(.x, na.rm = TRUE)),
+        # Fill all other columns (Date, Time, etc.) with the first row's data
+        across(-starts_with("Value."), first)
+      ) %>%
+      mutate(Place = "MEAN") # Label 
+    
+    # Glue the mean row to the bottom of the data (.x)
+    bind_rows(.x, mean_row)
+  }) %>%
+  group_split(.keep = FALSE)
+
+#print(df_list)
+```
+
+**Take last row of each dataframe in the list and bind into a single dataframe**
+
+```{r}
+library(purrr)
+
+mean_summary <- df_list %>%  
+  map_dfr(~ tail(.x, 1))  #"maps" a function over the list and returns a data frame by row-binding the results.
+```
+
+## 3. Pivot longer
+
+```{r}
+mean_summary_long <- mean_summary %>%
+  pivot_longer(    #Pivot all "Value" columns into two columns: 'Unit' and 'Value'
+    cols = starts_with("Value."), 
+    names_to = "Unit", 
+    values_to = "Temperature"
+  ) %>%
+  select(Place, Date, Time, Temperature, Unit) %>%
+  mutate(Unit = gsub("Value.", "", Unit))   # clean "Value.1" to just "1"
+
+```
+
+## 4. Bind dataframes
+
+```{r}
+template <- read.csv(here("Data","Thermocouple","3D_template.csv"))
+
+extra_rows <- nrow(template) - nrow(mean_summary_long)
+
+# Add those empty rows to the bottom of your summary data
+mean_summary_extra <- mean_summary_long %>%
+  bind_rows(as.data.frame(matrix(NA, nrow = extra_rows, ncol = ncol(mean_summary_long))) %>% 
+              setNames(names(mean_summary_long)))
+
+# Now they both have same number of rows, bind_cols will work
+new_df <- bind_cols(template, mean_summary_extra)
+
+# Save as .csv
+write.csv(new_df, here("Data","Thermocouple","Average_clean","3D_20260311_run.csv"), row.names = FALSE)
+```

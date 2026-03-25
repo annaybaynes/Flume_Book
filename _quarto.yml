@@ -1,0 +1,30 @@
+project:
+  type: book
+
+book:
+  title: "Flume_book"
+
+  repo-branch: main
+  page-navigation: true
+  
+  chapters:
+    - index.qmd
+    - part: Logger
+      chapters: 
+        - Loggers.qmd
+    - part: 3D Coldwater patch
+      chapters: 
+        - 3D_coldwater_patch_clean.qmd
+        - 3D_coldwater_patch.qmd
+    - summary.qmd
+    - references.qmd
+
+format: 
+  html:
+    theme: cosmo
+    embed-resources: true
+    number-depth: 1
+    code-overflow: wrap
+    self-contained: true
+    editor: visual
+
